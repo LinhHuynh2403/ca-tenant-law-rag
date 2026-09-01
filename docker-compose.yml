@@ -1,0 +1,18 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: ca_tenant_law_pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ca_tenant_law
+    ports:
+      # Host 5434 -> container 5432. 5432 is taken by your Homebrew Postgres
+      # 14, and 5433 is already used by another project's Postgres container
+      # (ai-career-os-db-1).
+      - "5434:5432"
+    volumes:
+      - ca_tenant_law_pgdata:/var/lib/postgresql/data
+
+volumes:
+  ca_tenant_law_pgdata:
