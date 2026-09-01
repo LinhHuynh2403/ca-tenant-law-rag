@@ -179,7 +179,7 @@ This is an in-progress learning project, built one verified stage at a time.
 - [x] **Fetch** — download raw statute HTML
 - [x] **Parse** — structured, hierarchy-preserving JSON (92 sections)
 - [x] **Chunk** — adaptive, context-prefixed retrieval units (560 chunks)
-- [ ] **Embed + index** — pgvector storage
+- [x] **Embed + index** — 560 chunks embedded (Voyage `voyage-law-2`) and loaded into PostgreSQL + pgvector
 - [ ] **Retrieve** — hybrid vector + keyword search
 - [ ] **Generate** — grounded, cited answers
 - [ ] **API + UI** — FastAPI endpoint + minimal React frontend
