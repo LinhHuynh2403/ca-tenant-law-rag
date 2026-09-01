@@ -220,7 +220,7 @@ ca-tenant-law-rag/
 
 ```bash
 # 1. Clone
-git clone [YOUR REPO URL]
+git clone https://github.com/LinhHuynh2403/ca-tenant-law-rag.git
 cd ca-tenant-law-rag
 
 # 2. Install dependencies (uses uv: https://docs.astral.sh/uv/)
