@@ -13,6 +13,8 @@ treated as core features, not afterthoughts.
 > ⚠️ **This project provides general legal information, not legal advice.** It is
 > a personal learning project, not a substitute for a licensed attorney.
 
+![Home page](docs/screenshots/home.png)
+
 ---
 
 ## What it does
@@ -22,11 +24,10 @@ Ask a natural-language question about California landlord–tenant law:
 > *"In California, how long does a landlord have to return a security deposit?"*
 
 The system retrieves the relevant statute text, and an LLM composes an answer
-**constrained to that retrieved text**, citing the exact section:
+**constrained to that retrieved text**, citing the exact section — each citation
+a numbered footnote linking straight down to the exact excerpt it's grounded in:
 
-> No later than 21 calendar days after the tenant has vacated the premises,
-> the landlord must furnish an itemized statement and return any remaining
-> security (Cal. Civ. Code § 1950.5(h)(1)(A)(i)). …
+![Answered question with numbered citations linking to source cards](docs/screenshots/answer.png)
 
 Each citation is traceable to the underlying statute so the answer can be
 verified — the citations are the product.
