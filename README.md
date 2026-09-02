@@ -504,15 +504,5 @@ uv run uvicorn api.main:app --reload --port 8000
 cd frontend && pnpm install && pnpm dev   # → http://localhost:5173
 ```
 
----
-
-## Author
-
-**Linh Huynh**
-
-[![Portfolio](https://img.shields.io/badge/Portfolio-000000?style=flat&logo=googlechrome&logoColor=white)](https://linhhuynh2403.github.io/portfolio/)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/linh-huynh-hnvl/)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/LinhHuynh2403)
-
 Built as a hands-on exploration of production RAG engineering: data lineage,
 structure-aware ingestion, hybrid retrieval, grounding, and evaluation.
