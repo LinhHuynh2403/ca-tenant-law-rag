@@ -1,101 +1,85 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Deliberately light-only -- no dark-mode variant. A legal-reference tool
+     reads better on a calm, paper-like background than in a dark theme. */
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --text: #5b6169;
+  --text-h: #23262b;
+  --border: #e6e2d8;
+  --code-bg: #f3f1ea;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --accent: #3d5a80;
+  --accent-hover: #33495f;
+  --accent-bg: rgba(61, 90, 128, 0.08);
+  --accent-border: rgba(61, 90, 128, 0.3);
+
+  --error: #b3402a;
+  --error-bg: rgba(179, 64, 42, 0.08);
+  --error-border: rgba(179, 64, 42, 0.3);
+
+  --shadow: 0 1px 2px rgba(30, 25, 15, 0.04), 0 6px 20px rgba(30, 25, 15, 0.05);
+
+  --sans: system-ui, "Segoe UI", Roboto, sans-serif;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  font: 17px/155% var(--sans);
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+* {
+  box-sizing: border-box;
 }
 
 #root {
-  width: 720px;
+  width: 760px;
   max-width: 100%;
   margin: 0 auto;
   min-height: 100svh;
-  box-sizing: border-box;
-  padding: 0 16px;
+  padding: 0 20px;
 }
 
 body {
   margin: 0;
+  background: var(--bg);
 }
 
 h1,
 h2 {
-  font-family: var(--heading);
-  font-weight: 500;
+  font-family: var(--sans);
+  font-weight: 600;
   color: var(--text-h);
 }
 
 h1 {
-  font-size: 28px;
-  letter-spacing: -0.5px;
-  margin: 32px 0 8px;
-}
-h2 {
-  font-size: 16px;
-  line-height: 118%;
-  letter-spacing: -0.1px;
+  font-size: clamp(24px, 4vw, 30px);
+  letter-spacing: -0.3px;
   margin: 0 0 8px;
 }
+
+h2 {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  margin: 0 0 12px;
+}
+
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+a {
+  color: var(--accent);
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  font-family: var(--mono);
 }

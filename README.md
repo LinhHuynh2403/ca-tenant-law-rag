@@ -212,7 +212,7 @@ original plan's design (grounded refusal lives in Step 5, not Step 4).
 ## Generation
 
 `generation/generate.py` sends the top-K retrieved chunks plus the user's
-question to **Claude Opus 5** in a single call. Grounding is enforced at two
+question to **Claude Sonnet 5** in a single call. Grounding is enforced at two
 independent layers, not one:
 
 1. **Prompt-level.** The system prompt instructs Claude to answer only from
@@ -256,6 +256,23 @@ using outside knowledge. That is the grounding rule working as intended: the
 model reasoned about scope conflict using only what was retrieved, and
 declined to go further than the sources allowed.
 
+**Answers are prompted to be concise: a direct 1-2 sentence answer first,
+then a short "-"-prefixed list only for genuinely important exceptions,
+under ~120 words unless the question needs more.** Early answers ran
+300-450 words, walking through every retrieved excerpt in full prose —
+technically grounded, but a user asking "how many days" had to read several
+paragraphs to find the number. Tightening the prompt cut typical answers to
+~110-150 words without losing grounding: fewer excerpts get cited per
+answer, but every citation kept is still verified exactly as before (a
+citation that's cut for brevity just doesn't reach `cited_citations`, so it
+never appears in the API's citation list either — the Sources shown to the
+user always match what the answer actually relies on). One prompt-tuning
+detail worth remembering: rule 7 originally banned all bullet characters to
+stop literal `**`/`#` from leaking into the plain-text UI (see below), but
+that also suppressed the short exception-lists this format wants — a plain
+`-` at line start needed to be explicitly carved out as safe, since it
+reads fine as a bullet without any markdown rendering at all.
+
 ---
 
 ## API + UI
@@ -272,11 +289,25 @@ calls), and FastAPI runs sync path functions in a thread pool automatically
 step.
 
 **`frontend/`** is a minimal Vite + React + TypeScript page: a question box,
-the answer, and a "Sources" list of expandable citation cards — each one
-shows the exact retrieved statute text and a link to the official source
-when expanded. No component library, no state management library — one
-`fetch` call and `useState`, matching what a "minimal UI whose job is to
-make grounding visible" actually needs.
+the answer, and a "Sources" list of citation cards — each a real link
+(`<a target="_blank">`, not a JS toggle) showing the section number and a
+text preview, opening straight to the official statute. No component
+library, no state management library — one `fetch` call and `useState`,
+matching what a "minimal UI whose job is to make grounding visible"
+actually needs.
+
+**Visual design pass.** Light-only palette (soft off-white background, no
+dark mode — a legal-reference tool reads better calm and paper-like than in
+a dark theme), one muted slate-blue accent used sparingly, a serif face
+(Source Serif 4) for the long-form answer text specifically since
+extended legal reading benefits from it, system-ui everywhere else. Three
+response states are handled distinctly rather than collapsed into one
+"result" view: a normal grounded answer, a calm muted panel for the
+zero-citations refusal case (relying on the fact that a refusal always
+carries zero citations, enforced by the Step 5 system prompt — not string-
+matching the refusal text), and a red-toned banner reserved for actual
+request failures. Verified across desktop and a 390px mobile viewport with
+headless-Chromium screenshots, the same way Step 6's first UI pass was.
 
 ### Running it locally
 
@@ -326,7 +357,7 @@ parser dependency for a "minimal" UI.
 | Embeddings | **Voyage AI (`voyage-law-2`)** | Legal-domain-tuned embedding model; asymmetric `input_type` (document vs. query) improves match quality between short questions and longer statute passages. |
 | Storage & search | **PostgreSQL + pgvector** (via Docker) | Keep vectors **and** metadata in one store, so filtering (jurisdiction, date) and semantic search happen in a single query — no second database to sync. |
 | Retrieval | **Hybrid: vector + keyword, fused with RRF** | Vector catches paraphrase ("deposit return" ≈ "21 days"); keyword catches exact terms and citations that must match precisely. Legal queries need both. |
-| Generation | **Claude Opus 5 (Anthropic)** | Composes a cited answer constrained to retrieved text; declines when unsupported. Paired with Voyage AI (Anthropic's recommended embedding partner, since Claude has no embeddings endpoint of its own) to keep the stack coherent. |
+| Generation | **Claude Sonnet 5 (Anthropic)** | Composes a cited answer constrained to retrieved text; declines when unsupported. ~$0.008/question — chosen over Opus 5 to keep ongoing per-question cost lower while testing. Paired with Voyage AI (Anthropic's recommended embedding partner, since Claude has no embeddings endpoint of its own) to keep the stack coherent. |
 | API | **FastAPI** | Pydantic-native HTTP layer; reuses the same `AskRequest`/`AskResponse` models the rest of the pipeline already speaks. |
 | Frontend | **React + TypeScript (Vite)** | Minimal UI whose job is to make grounding visible: answer + clickable citations that expand to the exact retrieved statute text. |
 | Evaluation | **RAGAS / custom harness** *(planned)* | Measure retrieval hit rate, citation accuracy, and faithfulness — quality as a number, not a vibe. |
@@ -342,7 +373,7 @@ This is an in-progress learning project, built one verified stage at a time.
 - [x] **Chunk** — adaptive, context-prefixed retrieval units (560 chunks)
 - [x] **Embed + index** — 560 chunks embedded (Voyage `voyage-law-2`) and loaded into PostgreSQL + pgvector
 - [x] **Retrieve** — hybrid vector + keyword search, fused with RRF, filtered by jurisdiction
-- [x] **Generate** — grounded, cited answers (Claude Opus 5) with output-level citation verification
+- [x] **Generate** — grounded, cited answers (Claude Sonnet 5) with output-level citation verification
 - [x] **API + UI** — FastAPI endpoint + minimal React frontend, verified end-to-end in a real browser
 - [ ] **Evaluate** — retrieval/citation/faithfulness harness
 
