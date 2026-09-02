@@ -153,6 +153,61 @@ flagged with `exceeds_token_budget` for later review.
 
 ---
 
+## Retrieval
+
+`retrieval/search.py` runs one SQL query per question that combines two
+independent rankings:
+
+- **Semantic** — cosine distance between the query's embedding (Voyage
+  `voyage-law-2`, `input_type="query"`) and each chunk's stored embedding.
+- **Keyword** — Postgres full-text search (`ts_rank_cd` over the `text_search`
+  column), matching on stemmed word overlap rather than meaning.
+
+The two are combined with **Reciprocal Rank Fusion**: each result's score is
+`1/(60 + its rank)` in a given list, summed across both lists. This avoids
+comparing incompatible scales (cosine similarity is 0–1; `ts_rank_cd` is an
+unbounded float) — RRF only cares about rank position, not raw score
+magnitude. A `jurisdiction = 'CA'` filter runs in both branches of the query.
+
+### Notable design decisions
+
+**Keyword matching uses OR, not the default AND.** Postgres's
+`websearch_to_tsquery` — the obvious first choice — ANDs every significant
+word in the query together. For a full sentence question ("how many days does
+a landlord have to return my security deposit?"), that means a chunk would
+need to contain *all six* significant words to match at all, which almost
+never happens in a ~100-token chunk. The fix: build the query with
+`plainto_tsquery` and rewrite its `&` operators to `|` (a documented Postgres
+idiom), so a chunk matches if it contains *any* of the significant words, and
+`ts_rank_cd` naturally scores chunks with more overlap higher — the same
+"more overlap, more relevant" behavior classic keyword ranking (e.g. BM25)
+gives you, without an all-or-nothing gate.
+
+**A known, deliberately deferred limitation: statutory cross-references.**
+Testing turned up a real case: asking about security deposit return timing
+ranks `§1950.7(c)` (deposit rules for *non-residential* property) above the
+correct `§1950.5(h)` — both by embedding similarity and keyword overlap, since
+the two sections describe near-identical mechanics in similar language. The
+sentence that would disambiguate this — `§1950.7(a)`: *"With respect to
+residential property, the provisions of Section 1950.5 shall prevail"* —
+lives in a **sibling** subsection, not an ancestor, so chunking's
+context-prefixing (which only walks up the tree) never attaches it to
+`§1950.7(c)`'s chunk. Fixing this generally (detecting which subsections carry
+section-wide scope language) is exactly the kind of failure a labeled
+evaluation harness should catch systematically rather than something to patch
+from one anecdote — left for the **Evaluate** stage rather than fixed here.
+
+**Retrieval doesn't decide when to refuse to answer.** An out-of-scope test
+query ("penalty for jaywalking") still returned top-5 results with RRF scores
+in the same numeric range as genuinely relevant queries — RRF scores reflect
+rank position, not whether a result is actually a good match, so there's no
+safe score threshold to filter on here. Refusing ("I don't have that in my
+sources") has to be a judgment the generation step makes by reading the
+retrieved text, not something retrieval can decide on its own — confirming the
+original plan's design (grounded refusal lives in Step 5, not Step 4).
+
+---
+
 ## Tech stack
 
 | Layer | Tool | Why |
@@ -164,7 +219,7 @@ flagged with `exceeds_token_budget` for later review.
 | Dependency management | **uv** | Fast, reproducible Python env + lockfile — modern replacement for pip/venv juggling. |
 | Embeddings | **Voyage AI (`voyage-law-2`)** | Legal-domain-tuned embedding model; asymmetric `input_type` (document vs. query) improves match quality between short questions and longer statute passages. |
 | Storage & search | **PostgreSQL + pgvector** (via Docker) | Keep vectors **and** metadata in one store, so filtering (jurisdiction, date) and semantic search happen in a single query — no second database to sync. |
-| Retrieval | **Hybrid: vector + keyword** *(planned)* | Vector catches paraphrase ("deposit return" ≈ "21 days"); keyword catches exact terms and citations that must match precisely. Legal queries need both. |
+| Retrieval | **Hybrid: vector + keyword, fused with RRF** | Vector catches paraphrase ("deposit return" ≈ "21 days"); keyword catches exact terms and citations that must match precisely. Legal queries need both. |
 | Generation | **LLM API** *(planned)* | Composes a cited answer constrained to retrieved text; declines when unsupported. |
 | API | **FastAPI** *(planned)* | Async, Pydantic-native, auto-documented HTTP layer. |
 | Frontend | **React** *(planned)* | Minimal UI whose job is to make grounding visible: answer + clickable citations. |
@@ -180,7 +235,7 @@ This is an in-progress learning project, built one verified stage at a time.
 - [x] **Parse** — structured, hierarchy-preserving JSON (92 sections)
 - [x] **Chunk** — adaptive, context-prefixed retrieval units (560 chunks)
 - [x] **Embed + index** — 560 chunks embedded (Voyage `voyage-law-2`) and loaded into PostgreSQL + pgvector
-- [ ] **Retrieve** — hybrid vector + keyword search
+- [x] **Retrieve** — hybrid vector + keyword search, fused with RRF, filtered by jurisdiction
 - [ ] **Generate** — grounded, cited answers
 - [ ] **API + UI** — FastAPI endpoint + minimal React frontend
 - [ ] **Evaluate** — retrieval/citation/faithfulness harness
@@ -201,6 +256,9 @@ ca-tenant-law-rag/
 │   ├── schema.sql       # chunks table: vector + tsvector + metadata columns
 │   ├── connection.py    # shared Postgres connection helper
 │   └── load.py          # applies schema.sql, upserts embedded chunks into Postgres
+├── retrieval/
+│   ├── search.py        # hybrid_search(): vector + keyword, fused with RRF
+│   └── models.py        # SearchResult
 ├── data/
 │   ├── raw/             # raw HTML snapshot
 │   └── processed/       # civ_code_ch2_sections.json, chunks.json, chunks_embedded.json

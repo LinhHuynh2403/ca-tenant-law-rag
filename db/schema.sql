@@ -13,21 +13,21 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS chunks (
-    chunk_id              TEXT PRIMARY KEY,
-    citation              TEXT NOT NULL,
-    section_number        TEXT NOT NULL,
-    subsection_path       TEXT,
-    heading                TEXT,
-    jurisdiction           TEXT NOT NULL,
-    source_url             TEXT NOT NULL,
-    chapter_heading        TEXT NOT NULL,
-    text                   TEXT NOT NULL,
+    chunk_id                TEXT PRIMARY KEY,
+    citation                TEXT NOT NULL,
+    section_number          TEXT NOT NULL,
+    subsection_path         TEXT,
+    heading                 TEXT,
+    jurisdiction            TEXT NOT NULL,
+    source_url              TEXT NOT NULL,
+    chapter_heading         TEXT NOT NULL,
+    text                    TEXT NOT NULL,
     token_count             INT NOT NULL,
     exceeds_token_budget    BOOLEAN NOT NULL DEFAULT FALSE,
     embedding               VECTOR(1024),
-    text_search              TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', text)) STORED,
-    created_at                TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at                TIMESTAMPTZ NOT NULL DEFAULT now()
+    text_search             TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', text)) STORED,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- HNSW: approximate nearest-neighbor index for cosine similarity search.
