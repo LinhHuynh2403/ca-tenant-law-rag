@@ -55,6 +55,7 @@ def ask(req: AskRequest) -> AskResponse:
                 source_url=source.source_url,
                 section_number=source.section_number,
                 subsection_path=source.subsection_path,
+                label=result.citation_labels.get(citation),
             )
         )
 

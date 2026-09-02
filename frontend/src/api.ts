@@ -6,6 +6,7 @@ export interface CitationInfo {
   source_url: string;
   section_number: string;
   subsection_path: string | null;
+  label: string | null;
 }
 
 export interface AskResponse {

@@ -38,11 +38,15 @@
 }
 
 #root {
-  width: 760px;
+  min-height: 100svh;
+}
+
+.container {
+  width: 720px;
   max-width: 100%;
   margin: 0 auto;
-  min-height: 100svh;
   padding: 0 20px;
+  box-sizing: border-box;
 }
 
 body {

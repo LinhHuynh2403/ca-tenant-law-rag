@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 
 import anthropic
+from pydantic import BaseModel, Field
 
 from generation.models import AnswerResult
 from retrieval.models import SearchResult
@@ -37,11 +38,13 @@ exact citation, followed by a user's question. Follow these rules strictly:
 1. Answer using ONLY the information in the excerpts provided below. Do not use any \
 outside knowledge of California law, even if you believe you know the answer -- the \
 excerpts may reflect amendments you are not aware of.
-2. After every factual claim, cite the exact source using the citation label shown \
-above that excerpt (e.g. "Cal. Civ. Code § 1950.5(h)(1)(A)"), copied exactly as \
-written, in parentheses at the end of the sentence or bullet -- e.g. "...within 24 \
-hours (Cal. Civ. Code § 1954(d))." Every sentence or bullet that states a rule must \
-end with its citation, parenthesized this way even in short bulleted lists.
+2. After every factual claim, insert the exact citation shown above that excerpt (e.g. \
+"Cal. Civ. Code § 1950.5(h)(1)(A)"), copied exactly as written, wrapped in double \
+square brackets immediately after the claim, with no other surrounding punctuation --\
+e.g. "...within 24 hours[[Cal. Civ. Code § 1954(d)]]." If one claim relies on more \
+than one citation, place multiple bracket tags back to back: \
+"...[[Cal. Civ. Code § X]][[Cal. Civ. Code § Y]]." Every sentence or bullet that \
+states a rule must end with at least one bracketed citation.
 3. Never cite a section that was not one of the excerpts provided to you. Never \
 invent, guess, or paraphrase a section number.
 4. If the provided excerpts do not contain enough information to answer the \
@@ -52,10 +55,11 @@ exactly: "I don't have that in my sources." Do not fill the gap with outside kno
 user's situation and say so explicitly.
 6. End every answer, even a refusal, with this exact line on its own: \
 "This is general information, not legal advice."
-7. Write in plain text only -- no markdown headings or "**bold**" (the interface \
-renders text as-is, not as markdown, so those characters would show up literally). A \
-plain "-" at the start of its own line is fine for a short list -- it still reads as a \
-bullet without any rendering.
+7. Write in plain text -- no markdown headings, no bullet characters other than a \
+plain "-" at the start of its own line. The one exception: you may wrap the single \
+most important figure or fact in your opening sentence in "**double asterisks**" for \
+emphasis (e.g. "**21 calendar days**") -- do not bold anything else, and do not use \
+any other markdown.
 
 FORMAT YOUR ANSWER LIKE THIS:
 1. Start with a direct 1-2 sentence answer to the user's actual question. This is the \
@@ -73,9 +77,25 @@ sources shown to the user, so only cite what you actually relied on.
 at the end -- don't elaborate on what's missing.
 
 Lead with the answer. Be concise. The user wants to know quickly, not read a memo.
+
+Also produce `citation_labels`: for each distinct citation you used in the answer, a \
+short (3-6 word) plain-language label describing what that specific provision covers \
+-- e.g. "Return of security deposit timeline", not a restatement of the rule itself \
+and not the citation string again. This is a navigation aid shown above the excerpt \
+text, not a source of legal information on its own.
 """
 
 CITATION_RE = re.compile(r"Cal\. Civ\. Code § \d+(?:\.\d+)*(?:\([a-zA-Z0-9]+\))*")
+
+
+class CitationLabel(BaseModel):
+    citation: str
+    label: str = Field(..., description="3-6 word plain-language paraphrase, not statute text")
+
+
+class GeneratedAnswer(BaseModel):
+    answer: str
+    citation_labels: list[CitationLabel]
 
 
 def _format_sources(sources: list[SearchResult]) -> str:
@@ -111,14 +131,22 @@ def generate_answer(query: str, top_k: int = 5, client: anthropic.Anthropic | No
 
     user_message = f"EXCERPTS:\n\n{_format_sources(sources)}\n\nQUESTION: {query}"
 
-    response = client.messages.create(
+    response = client.messages.parse(
         model=MODEL,
         max_tokens=2048,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_message}],
+        output_format=GeneratedAnswer,
     )
-    answer_text = "".join(b.text for b in response.content if b.type == "text")
+    parsed = response.parsed_output
+    answer_text = parsed.answer
 
+    # Grounding verification stays independent of citation_labels -- it's
+    # derived only from citation strings found in `answer_text` itself (now
+    # inside [[...]] tags rather than parens, same regex either way), never
+    # trusting citation_labels as a stand-in for what was actually cited. A
+    # decorative label the model produced for a citation it didn't actually
+    # use in the answer should never count as "cited".
     cited = _extract_citations(answer_text)
     # A cited section is grounded if it matches a retrieved chunk's citation
     # (find_backing_source), which accepts exact matches AND ancestor/
@@ -132,12 +160,15 @@ def generate_answer(query: str, top_k: int = 5, client: anthropic.Anthropic | No
     #     already contains "(c)(1)"'s text verbatim, nested inside it.
     unverified = [c for c in cited if find_backing_source(c, sources) is None]
 
+    labels = {cl.citation: cl.label for cl in parsed.citation_labels}
+
     return AnswerResult(
         query=query,
         answer=answer_text,
         sources=sources,
         cited_citations=cited,
         unverified_citations=unverified,
+        citation_labels=labels,
     )
 
 

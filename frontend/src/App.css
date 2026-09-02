@@ -1,63 +1,138 @@
-.page {
-  padding: 40px 0 32px;
-  min-height: 100svh;
+/* ---------- Top strip + nav ---------- */
+
+.top-strip {
+  height: 4px;
+  background: var(--text-h);
+}
+
+.site-nav {
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 16px;
+  padding-bottom: 16px;
 }
 
-/* ---------- Header ---------- */
-
-.site-header {
-  margin-bottom: 28px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-h);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
-.subtitle {
-  font-size: 15px;
-  line-height: 150%;
-  max-width: 56ch;
+.brand-icon {
+  color: var(--accent);
+  font-size: 18px;
 }
 
-/* ---------- Ask form ---------- */
+.nav-links {
+  display: flex;
+  gap: 22px;
+}
+
+.nav-links a,
+.nav-links button {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.nav-links a:hover,
+.nav-links button:hover {
+  color: var(--text-h);
+}
+
+/* ---------- Hero ---------- */
+
+.hero {
+  text-align: center;
+  padding: 56px 0 28px;
+}
+
+.hero h1 {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 122%;
+  letter-spacing: -0.3px;
+  margin: 0 0 16px;
+}
+
+.hero h1 em {
+  color: var(--accent);
+}
+
+.hero .subtitle {
+  max-width: 46ch;
+  margin: 0 auto 28px;
+  font-size: 16px;
+  line-height: 155%;
+}
+
+/* ---------- Ask form (search bar) ---------- */
 
 .ask-form {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  max-width: 560px;
+  margin: 0 auto;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: 999px;
+  padding: 6px 6px 6px 18px;
   box-shadow: var(--shadow);
 }
 
-.ask-form textarea {
+.search-icon {
+  display: flex;
+  color: var(--text);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.ask-form input {
+  flex: 1;
+  min-width: 0;
   font: inherit;
-  font-size: 16px;
-  line-height: 145%;
-  padding: 4px 2px;
+  font-size: 15px;
+  padding: 10px 4px;
   border: none;
   background: transparent;
   color: var(--text-h);
-  resize: vertical;
   outline: none;
 }
 
-.ask-form textarea::placeholder {
-  color: color-mix(in srgb, var(--text) 70%, transparent);
+.ask-form input::placeholder {
+  color: color-mix(in srgb, var(--text) 65%, transparent);
 }
 
-.ask-form textarea:disabled {
+.ask-form input:disabled {
   opacity: 0.6;
 }
 
 .ask-form button {
-  align-self: flex-end;
+  flex-shrink: 0;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
-  padding: 10px 20px;
+  padding: 10px 22px;
   border: none;
-  border-radius: 9px;
+  border-radius: 999px;
   background: var(--accent);
   color: #fff;
   cursor: pointer;
@@ -73,10 +148,50 @@
   cursor: default;
 }
 
+/* ---------- Topic chips ---------- */
+
+.topic-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 600px;
+  margin: 18px auto 0;
+}
+
+.chip {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chip-active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ---------- Banners ---------- */
 
 .banner {
-  margin-top: 20px;
+  margin: 20px 0;
   padding: 12px 16px;
   border-radius: 10px;
   font-size: 14px;
@@ -94,21 +209,35 @@
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
   color: var(--text-h);
-  margin-bottom: 20px;
+  margin-top: 0;
 }
 
-/* ---------- Answer ---------- */
+/* ---------- Result card ---------- */
 
-.answer-block {
-  margin-top: 28px;
+.result-card {
+  margin: 28px 0;
   text-align: left;
-  animation: fade-in 0.25s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow);
+}
+
+h2.eyebrow {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin: 0 0 14px;
 }
 
 .answer-text {
   font-family: var(--serif);
   font-size: 18px;
-  max-width: 62ch;
+  max-width: 64ch;
 }
 
 .answer-text p {
@@ -122,16 +251,26 @@
   margin-bottom: 0;
 }
 
+.footnote {
+  font-size: 11px;
+  margin-left: 1px;
+}
+
+.footnote a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
 /* ---------- No-answer state ---------- */
 
 .no-answer {
-  margin-top: 28px;
+  margin: 28px 0;
   padding: 20px;
   border: 1px dashed var(--border);
   border-radius: 12px;
   background: var(--code-bg);
   text-align: left;
-  animation: fade-in 0.25s ease;
 }
 
 .no-answer p {
@@ -143,26 +282,27 @@
 /* ---------- Sources ---------- */
 
 .sources {
-  margin-top: 32px;
+  margin-top: 28px;
   border-top: 1px solid var(--border);
-  padding-top: 20px;
+  padding-top: 22px;
 }
 
 .citation-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .citation-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 14px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: 12px;
+  background: var(--bg);
   text-decoration: none;
+  scroll-margin-top: 20px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -171,92 +311,201 @@
   box-shadow: var(--shadow);
 }
 
-.citation-badge {
+.citation-number {
   flex-shrink: 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   background: var(--accent-bg);
   color: var(--accent);
-  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 1px;
 }
 
-.citation-body {
+.citation-main {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
+  flex: 1;
+}
+
+.citation-top-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .citation-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-h);
 }
 
-.citation-snippet {
-  font-size: 13px;
-  line-height: 145%;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.citation-arrow {
+.citation-external {
   flex-shrink: 0;
-  margin-left: auto;
   color: var(--text);
-  opacity: 0.5;
-  font-size: 14px;
+  opacity: 0.45;
+  font-size: 13px;
 }
 
-.citation-card:hover .citation-arrow {
+.citation-card:hover .citation-external {
   color: var(--accent);
   opacity: 1;
+}
+
+.citation-label {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.citation-excerpt {
+  margin: 4px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--accent-border);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 13.5px;
+  line-height: 150%;
+  color: var(--text);
+}
+
+/* ---------- Info modal ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 12, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+}
+
+.modal {
+  position: relative;
+  width: 480px;
+  max-width: 100%;
+  max-height: 80svh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+
+.modal h2 {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-h);
+  margin: 0 0 10px;
+}
+
+.modal p {
+  font-size: 14.5px;
+  line-height: 165%;
+  color: var(--text);
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--code-bg);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
 }
 
 /* ---------- Disclaimer ---------- */
 
 .disclaimer {
-  margin-top: auto;
-  padding-top: 40px;
-  font-size: 12px;
-  color: color-mix(in srgb, var(--text) 75%, transparent);
+  padding-top: 20px;
+}
+
+.disclaimer p {
+  padding-bottom: 40px;
+  font-size: 12.5px;
+  line-height: 155%;
+  color: color-mix(in srgb, var(--text) 80%, transparent);
   text-align: center;
 }
 
-/* ---------- Motion / responsive ---------- */
+/* ---------- Responsive ---------- */
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
+@media (max-width: 560px) {
+  .nav-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding-top: 12px;
+    padding-bottom: 12px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@media (max-width: 520px) {
-  .page {
-    padding: 28px 0 24px;
+  .nav-links {
+    gap: 14px;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+
+  .hero {
+    padding: 36px 0 20px;
+  }
+
+  .ask-form {
+    flex-wrap: wrap;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .ask-form input {
+    width: 100%;
+    order: 1;
   }
 
   .ask-form button {
-    align-self: stretch;
+    order: 2;
+    width: 100%;
+  }
+
+  .search-icon {
+    display: none;
+  }
+
+  .result-card {
+    padding: 20px;
   }
 
   .answer-text {
     font-size: 16.5px;
   }
 
-  .citation-card {
-    flex-wrap: wrap;
+  .citation-top-row {
+    flex-direction: column;
+    gap: 2px;
   }
 }

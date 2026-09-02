@@ -273,6 +273,25 @@ that also suppressed the short exception-lists this format wants — a plain
 `-` at line start needed to be explicitly carved out as safe, since it
 reads fine as a bullet without any markdown rendering at all.
 
+**Citations moved from inline parenthetical prose to a `[[citation]]` tag
+format, and generation switched to structured output
+(`client.messages.parse()`).** The UI redesign needed two things the old
+format couldn't give it: a numbered footnote marker in place of each
+citation (so `(Cal. Civ. Code § 1954(d))` becomes a small clickable `¹`
+linking to its source card), and a short plain-language label per citation
+for the source cards (e.g. "21-day deposit return deadline") — data we
+don't have, since our chunks carry no human-authored headings. Reliably
+stripping natural parenthetical prose back out client-side (especially
+where one clause cites multiple sections at once) turned out to be fragile
+regex territory; switching the model's citation format to an unambiguous
+`[[...]]` tag made that a trivial split, and asking for `citation_labels` as
+a structured field alongside the answer (via a `GeneratedAnswer` Pydantic
+schema) got a genuine label without a second model call. Grounding
+verification deliberately still runs only against citations found in
+`answer_text` itself — `citation_labels` is decorative and never treated as
+a stand-in for what was actually cited, so a mislabeled or extra entry
+there can't silently weaken `is_fully_grounded`.
+
 ---
 
 ## API + UI
@@ -308,6 +327,38 @@ carries zero citations, enforced by the Step 5 system prompt — not string-
 matching the refusal text), and a red-toned banner reserved for actual
 request failures. Verified across desktop and a 390px mobile viewport with
 headless-Chromium screenshots, the same way Step 6's first UI pass was.
+
+**Second design pass: landing-page layout with footnote-style citations.**
+Full-width nav (logo, "How it works" / "Coverage" / "About" — each opening a
+modal with real content rather than living in the page flow, GitHub link)
+over a hero search bar, topic chips that auto-submit real example
+questions, and citations rendered as numbered
+footnotes (`¹`) linking down to numbered source cards — built via
+`richText.tsx`, a small custom parser for the `[[citation]]`/`**bold**`
+markup the backend now emits (see the Generation section above), not a
+markdown library. Two things were deliberately *not* copied from the
+reference design rather than faked: a courts.gov "self-help center" link
+with no verified URL stayed plain text instead of guessing one, and the
+`Discrimination` example topic was swapped for `Just cause eviction` after
+checking the corpus directly — Chapter 2 has zero mentions of
+discrimination, so shipping that chip would have demoed a feature that
+always refuses. Browser verification this time caught two real bugs a
+visual read of the code wouldn't have: the nav wrapped mid-word on a 390px
+viewport (fixed with `white-space: nowrap` + a stacked mobile layout), and
+a `fade-in` CSS animation made answer text render almost invisible in
+full-page mobile screenshots — traced to Playwright's screenshot stitching
+interacting with an in-progress animation, not a real rendering bug, but
+serious enough (and inessential enough, given "no heavy animations" was
+already a constraint) to just remove rather than chase further.
+
+**Third pass: info content moved into a modal (`InfoModal.tsx`).** The
+"How it works" / "Coverage" / "About" sections originally lived inline,
+always visible below the answer — on the request to keep the home page
+"as simple as possible," they moved into a shared modal component instead,
+triggered by the nav buttons and closable via the × button, clicking the
+backdrop, or Escape. With no result on screen, the home page is now exactly
+one viewport tall on desktop: hero, search, chips, disclaimer, nothing to
+scroll past.
 
 ### Running it locally
 
@@ -402,10 +453,12 @@ ca-tenant-law-rag/
 ├── api/
 │   ├── main.py          # FastAPI app: POST /api/ask
 │   └── models.py        # AskRequest, AskResponse, CitationInfo
-├── frontend/             # Vite + React + TypeScript minimal UI
+├── frontend/             # Vite + React + TypeScript UI
 │   └── src/
-│       ├── App.tsx       # question box, answer, sources list
-│       ├── CitationCard.tsx  # expandable citation -> source text + link
+│       ├── App.tsx       # nav, hero/search, answer, sources, info sections
+│       ├── CitationCard.tsx  # numbered source card -> excerpt + link
+│       ├── InfoModal.tsx # "How it works" / "Coverage" / "About" popup
+│       ├── richText.tsx  # renders [[citation]] -> footnote, **bold**
 │       └── api.ts        # fetch client for POST /api/ask
 ├── data/
 │   ├── raw/             # raw HTML snapshot

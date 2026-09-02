@@ -17,6 +17,7 @@ class CitationInfo(BaseModel):
     source_url: str
     section_number: str
     subsection_path: str | None
+    label: str | None  # short plain-language paraphrase, e.g. "21-day deposit return deadline"
 
 
 class AskResponse(BaseModel):
