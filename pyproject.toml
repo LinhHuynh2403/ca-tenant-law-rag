@@ -8,6 +8,7 @@ dependencies = [
     "pydantic>=2.11",
     "tiktoken>=0.9",
     "voyageai>=0.3",
+    "anthropic>=0.40",
     "psycopg[binary]>=3.2",
     "pgvector>=0.3",
     "python-dotenv>=1.0",

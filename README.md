@@ -24,8 +24,9 @@ Ask a natural-language question about California landlord–tenant law:
 The system retrieves the relevant statute text, and an LLM composes an answer
 **constrained to that retrieved text**, citing the exact section:
 
-> A landlord must return the security deposit within 21 days of the tenant
-> vacating [Cal. Civ. Code § 1950.5(g)]. …
+> **21 calendar days.** No later than 21 calendar days after the tenant has
+> vacated the premises, the landlord must furnish an itemized statement and
+> return any remaining security (Cal. Civ. Code § 1950.5(h)(1)(A)(i)). …
 
 Each citation is traceable to the underlying statute so the answer can be
 verified — the citations are the product.
@@ -208,6 +209,55 @@ original plan's design (grounded refusal lives in Step 5, not Step 4).
 
 ---
 
+## Generation
+
+`generation/generate.py` sends the top-K retrieved chunks plus the user's
+question to **Claude Opus 5** in a single call. Grounding is enforced at two
+independent layers, not one:
+
+1. **Prompt-level.** The system prompt instructs Claude to answer only from
+   the provided excerpts, cite the exact section after every claim (reusing
+   each excerpt's own citation string as its label), reason explicitly about
+   conflicting or scope-limited excerpts, decline with an exact phrase
+   ("I don't have that in my sources.") when the excerpts don't cover the
+   question, and close every answer with a "not legal advice" line.
+2. **Output-level verification.** Prompt instructions are not a guarantee.
+   After generation, every citation string in the answer is extracted and
+   checked against what was actually retrieved — this is the system checking
+   its own claim to never fabricate citations, not just trusting the prompt
+   worked. Any citation that can't be traced to a retrieved chunk is
+   surfaced via `unverified_citations`, which should always be empty.
+
+### Notable design decisions
+
+**Grounding verification accepts ancestor and descendant citations, not just
+exact matches.** The first real test run flagged `§1950.5(h)(1)` as
+"unverified," even though only `§1950.5(h)(1)(A)(i)` was retrieved. That
+wasn't a bug in the answer — the model cited the correct parent subsection as
+shorthand, and thanks to chunking's ancestor-context-prefixing (see the
+Chunk section above), `(h)(1)`'s own text is genuinely present verbatim
+inside the `(h)(1)(A)(i)` chunk shown to the model. The mirror case
+(descendant citations, e.g. citing `§1950.7(c)(1)` when only the whole
+`§1950.7(c)` chunk was retrieved) is grounded for the same reason in
+reverse: a chunk only exists for a node when its *entire* subtree fit the
+token budget as one chunk, so its text already contains every descendant's
+text nested inside it. Since citation strings are built by concatenating
+`(label)` segments in order, both relationships reduce to a plain string
+prefix check, just in opposite directions.
+
+**A real test of the §1950.5/§1950.7 distractor from Step 4 showed the
+system handling it well, unprompted.** Asked about deposit return timing,
+Claude cited the correct `§1950.5(h)(1)` rule, and when it noticed
+`§1950.7(c)` also describes deposit deadlines, it explicitly said it could
+not determine from the given excerpts whether `§1950.7` applies to
+residential tenancies — rather than either wrongly treating it as equally
+applicable, or confidently (and ungroundedly) asserting it doesn't apply
+using outside knowledge. That is the grounding rule working as intended: the
+model reasoned about scope conflict using only what was retrieved, and
+declined to go further than the sources allowed.
+
+---
+
 ## Tech stack
 
 | Layer | Tool | Why |
@@ -220,7 +270,7 @@ original plan's design (grounded refusal lives in Step 5, not Step 4).
 | Embeddings | **Voyage AI (`voyage-law-2`)** | Legal-domain-tuned embedding model; asymmetric `input_type` (document vs. query) improves match quality between short questions and longer statute passages. |
 | Storage & search | **PostgreSQL + pgvector** (via Docker) | Keep vectors **and** metadata in one store, so filtering (jurisdiction, date) and semantic search happen in a single query — no second database to sync. |
 | Retrieval | **Hybrid: vector + keyword, fused with RRF** | Vector catches paraphrase ("deposit return" ≈ "21 days"); keyword catches exact terms and citations that must match precisely. Legal queries need both. |
-| Generation | **LLM API** *(planned)* | Composes a cited answer constrained to retrieved text; declines when unsupported. |
+| Generation | **Claude Opus 5 (Anthropic)** | Composes a cited answer constrained to retrieved text; declines when unsupported. Paired with Voyage AI (Anthropic's recommended embedding partner, since Claude has no embeddings endpoint of its own) to keep the stack coherent. |
 | API | **FastAPI** *(planned)* | Async, Pydantic-native, auto-documented HTTP layer. |
 | Frontend | **React** *(planned)* | Minimal UI whose job is to make grounding visible: answer + clickable citations. |
 | Evaluation | **RAGAS / custom harness** *(planned)* | Measure retrieval hit rate, citation accuracy, and faithfulness — quality as a number, not a vibe. |
@@ -236,7 +286,7 @@ This is an in-progress learning project, built one verified stage at a time.
 - [x] **Chunk** — adaptive, context-prefixed retrieval units (560 chunks)
 - [x] **Embed + index** — 560 chunks embedded (Voyage `voyage-law-2`) and loaded into PostgreSQL + pgvector
 - [x] **Retrieve** — hybrid vector + keyword search, fused with RRF, filtered by jurisdiction
-- [ ] **Generate** — grounded, cited answers
+- [x] **Generate** — grounded, cited answers (Claude Opus 5) with output-level citation verification
 - [ ] **API + UI** — FastAPI endpoint + minimal React frontend
 - [ ] **Evaluate** — retrieval/citation/faithfulness harness
 
@@ -259,15 +309,18 @@ ca-tenant-law-rag/
 ├── retrieval/
 │   ├── search.py        # hybrid_search(): vector + keyword, fused with RRF
 │   └── models.py        # SearchResult
+├── generation/
+│   ├── generate.py      # generate_answer(): prompts Claude, verifies citations
+│   └── models.py        # AnswerResult
 ├── data/
 │   ├── raw/             # raw HTML snapshot
 │   └── processed/       # civ_code_ch2_sections.json, chunks.json, chunks_embedded.json
 ├── docker-compose.yml    # pgvector/pgvector Postgres container
 ├── pyproject.toml        # dependencies (managed with uv)
-├── .env.example          # VOYAGE_API_KEY, DATABASE_URL template
+├── .env.example          # VOYAGE_API_KEY, ANTHROPIC_API_KEY, DATABASE_URL template
 └── README.md
 ```
-*(Layout will grow as later stages are added — retrieval, API, and frontend directories are planned.)*
+*(Layout will grow as later stages are added — API and frontend directories are planned.)*
 
 ---
 
