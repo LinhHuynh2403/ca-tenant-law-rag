@@ -50,6 +50,9 @@ exactly: "I don't have that in my sources." Do not fill the gap with outside kno
 user's situation and say so explicitly.
 6. End every answer, even a refusal, with this exact line on its own: \
 "This is general information, not legal advice."
+7. Write in plain text only -- no markdown (no "**bold**", no "#" headings, no bullet \
+characters like "-" or "*"). The interface displaying your answer renders text as-is, \
+not as markdown, so formatting characters would show up literally to the user.
 """
 
 CITATION_RE = re.compile(r"Cal\. Civ\. Code § \d+(?:\.\d+)*(?:\([a-zA-Z0-9]+\))*")
@@ -68,6 +71,20 @@ def _extract_citations(text: str) -> list[str]:
     return seen
 
 
+def _citations_related(a: str, b: str) -> bool:
+    """True if `a` and `b` refer to the same retrieved text -- exact match,
+    or one is an ancestor/descendant of the other (see grounding note below)."""
+    return a == b or a.startswith(b) or b.startswith(a)
+
+
+def find_backing_source(citation: str, sources: list[SearchResult]) -> SearchResult | None:
+    """The retrieved chunk that grounds a given cited citation, if any --
+    used by the API layer to show the underlying statute text for a citation
+    the model produced (which may be an ancestor/descendant of the chunk's
+    own citation, not necessarily an exact string match)."""
+    return next((s for s in sources if _citations_related(citation, s.citation)), None)
+
+
 def generate_answer(query: str, top_k: int = 5, client: anthropic.Anthropic | None = None) -> AnswerResult:
     client = client or anthropic.Anthropic()
     sources = hybrid_search(query, top_k=top_k)
@@ -83,9 +100,9 @@ def generate_answer(query: str, top_k: int = 5, client: anthropic.Anthropic | No
     answer_text = "".join(b.text for b in response.content if b.type == "text")
 
     cited = _extract_citations(answer_text)
-    known_citations = {s.citation for s in sources}
     # A cited section is grounded if it matches a retrieved chunk's citation
-    # in either direction, not just exactly:
+    # (find_backing_source), which accepts exact matches AND ancestor/
+    # descendant relationships:
     #   - ANCESTOR (cited "(h)(1)", retrieved chunk is "(h)(1)(A)(i)"):
     #     grounded because chunk.py's ancestor-context-prefixing means
     #     "(h)(1)"'s own text is literally inside that chunk's text.
@@ -93,13 +110,7 @@ def generate_answer(query: str, top_k: int = 5, client: anthropic.Anthropic | No
     #     grounded, because a chunk only exists for a node when its FULL
     #     subtree fit the token budget as one chunk -- so "(c)"'s chunk text
     #     already contains "(c)(1)"'s text verbatim, nested inside it.
-    # Since citation strings are built by concatenating "(label)" segments in
-    # order, both relationships are plain string prefixes -- just checked in
-    # opposite directions.
-    unverified = [
-        c for c in cited
-        if c not in known_citations and not any(c.startswith(k) or k.startswith(c) for k in known_citations)
-    ]
+    unverified = [c for c in cited if find_backing_source(c, sources) is None]
 
     return AnswerResult(
         query=query,

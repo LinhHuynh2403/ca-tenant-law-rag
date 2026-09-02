@@ -24,9 +24,9 @@ Ask a natural-language question about California landlord–tenant law:
 The system retrieves the relevant statute text, and an LLM composes an answer
 **constrained to that retrieved text**, citing the exact section:
 
-> **21 calendar days.** No later than 21 calendar days after the tenant has
-> vacated the premises, the landlord must furnish an itemized statement and
-> return any remaining security (Cal. Civ. Code § 1950.5(h)(1)(A)(i)). …
+> No later than 21 calendar days after the tenant has vacated the premises,
+> the landlord must furnish an itemized statement and return any remaining
+> security (Cal. Civ. Code § 1950.5(h)(1)(A)(i)). …
 
 Each citation is traceable to the underlying statute so the answer can be
 verified — the citations are the product.
@@ -258,6 +258,62 @@ declined to go further than the sources allowed.
 
 ---
 
+## API + UI
+
+**`api/main.py`** is a thin FastAPI wrapper: one `POST /api/ask` endpoint
+that calls `generate_answer()` and reshapes the result for the frontend —
+each *cited* citation (not every retrieved chunk) paired with the exact
+statute text that grounds it via `find_backing_source()`, plus
+`is_fully_grounded` so the UI can surface a warning if verification ever
+fails. The endpoint is a plain `def`, not `async def`: `generate_answer()`
+is blocking end-to-end (Voyage, Postgres, Anthropic are all synchronous
+calls), and FastAPI runs sync path functions in a thread pool automatically
+— rewriting the whole pipeline as async wasn't worth it for a "minimal UI"
+step.
+
+**`frontend/`** is a minimal Vite + React + TypeScript page: a question box,
+the answer, and a "Sources" list of expandable citation cards — each one
+shows the exact retrieved statute text and a link to the official source
+when expanded. No component library, no state management library — one
+`fetch` call and `useState`, matching what a "minimal UI whose job is to
+make grounding visible" actually needs.
+
+### Running it locally
+
+```bash
+# Terminal 1 -- API (from the repo root)
+uv run uvicorn api.main:app --reload --port 8000
+
+# Terminal 2 -- frontend
+cd frontend
+pnpm install
+pnpm dev   # http://localhost:5173
+```
+
+### Notable design decisions
+
+**Citations shown to the user are the *cited* set, not the *retrieved*
+set.** `hybrid_search` returns up to `top_k` chunks (5 by default) as
+candidate context, but the model may only end up citing some of them — the
+API only returns `CitationInfo` for citations that actually appear in the
+answer text, resolved back to their backing chunk via the same
+ancestor/descendant matching used for grounding verification (see the
+Generation section above). Showing every retrieved-but-unused chunk would
+misrepresent what the answer actually relies on.
+
+**Verified in a real browser, not just via `curl`.** Automated
+Playwright-driven testing (headless Chromium, screenshots, console-error
+checks) confirmed the full loop end-to-end: submitting a question renders
+the answer, citation cards expand to show real statute text, and the
+"View official source" link works — not just that the API returns valid
+JSON. This caught a real, purely cosmetic bug curl testing couldn't have:
+the model's answers used markdown (`**bold**`), which isn't rendered by
+this plain-text UI and showed up as literal asterisks. Fixed with a
+one-line addition to the system prompt rather than adding a markdown
+parser dependency for a "minimal" UI.
+
+---
+
 ## Tech stack
 
 | Layer | Tool | Why |
@@ -271,8 +327,8 @@ declined to go further than the sources allowed.
 | Storage & search | **PostgreSQL + pgvector** (via Docker) | Keep vectors **and** metadata in one store, so filtering (jurisdiction, date) and semantic search happen in a single query — no second database to sync. |
 | Retrieval | **Hybrid: vector + keyword, fused with RRF** | Vector catches paraphrase ("deposit return" ≈ "21 days"); keyword catches exact terms and citations that must match precisely. Legal queries need both. |
 | Generation | **Claude Opus 5 (Anthropic)** | Composes a cited answer constrained to retrieved text; declines when unsupported. Paired with Voyage AI (Anthropic's recommended embedding partner, since Claude has no embeddings endpoint of its own) to keep the stack coherent. |
-| API | **FastAPI** *(planned)* | Async, Pydantic-native, auto-documented HTTP layer. |
-| Frontend | **React** *(planned)* | Minimal UI whose job is to make grounding visible: answer + clickable citations. |
+| API | **FastAPI** | Pydantic-native HTTP layer; reuses the same `AskRequest`/`AskResponse` models the rest of the pipeline already speaks. |
+| Frontend | **React + TypeScript (Vite)** | Minimal UI whose job is to make grounding visible: answer + clickable citations that expand to the exact retrieved statute text. |
 | Evaluation | **RAGAS / custom harness** *(planned)* | Measure retrieval hit rate, citation accuracy, and faithfulness — quality as a number, not a vibe. |
 
 ---
@@ -287,7 +343,7 @@ This is an in-progress learning project, built one verified stage at a time.
 - [x] **Embed + index** — 560 chunks embedded (Voyage `voyage-law-2`) and loaded into PostgreSQL + pgvector
 - [x] **Retrieve** — hybrid vector + keyword search, fused with RRF, filtered by jurisdiction
 - [x] **Generate** — grounded, cited answers (Claude Opus 5) with output-level citation verification
-- [ ] **API + UI** — FastAPI endpoint + minimal React frontend
+- [x] **API + UI** — FastAPI endpoint + minimal React frontend, verified end-to-end in a real browser
 - [ ] **Evaluate** — retrieval/citation/faithfulness harness
 
 ---
@@ -312,6 +368,14 @@ ca-tenant-law-rag/
 ├── generation/
 │   ├── generate.py      # generate_answer(): prompts Claude, verifies citations
 │   └── models.py        # AnswerResult
+├── api/
+│   ├── main.py          # FastAPI app: POST /api/ask
+│   └── models.py        # AskRequest, AskResponse, CitationInfo
+├── frontend/             # Vite + React + TypeScript minimal UI
+│   └── src/
+│       ├── App.tsx       # question box, answer, sources list
+│       ├── CitationCard.tsx  # expandable citation -> source text + link
+│       └── api.ts        # fetch client for POST /api/ask
 ├── data/
 │   ├── raw/             # raw HTML snapshot
 │   └── processed/       # civ_code_ch2_sections.json, chunks.json, chunks_embedded.json
@@ -320,14 +384,14 @@ ca-tenant-law-rag/
 ├── .env.example          # VOYAGE_API_KEY, ANTHROPIC_API_KEY, DATABASE_URL template
 └── README.md
 ```
-*(Layout will grow as later stages are added — API and frontend directories are planned.)*
+*(Layout will grow next with the evaluation harness.)*
 
 ---
 
 ## Getting started
 
-> Setup instructions cover the ingestion pipeline that exists today; embedding,
-> retrieval, API, and UI steps will be added as those stages are built.
+> The evaluation harness is the only stage left to build; everything below
+> runs end-to-end, from raw statute HTML to a working Q&A page.
 
 ```bash
 # 1. Clone
@@ -344,9 +408,15 @@ uv run python -m ingestion.chunk    # → data/processed/chunks.json
 
 # 4. Start Postgres + pgvector, then embed and load chunks
 docker compose up -d
-cp .env.example .env   # fill in VOYAGE_API_KEY
+cp .env.example .env   # fill in VOYAGE_API_KEY, ANTHROPIC_API_KEY
 uv run python -m ingestion.embed    # → data/processed/chunks_embedded.json
 uv run python -m db.load            # applies schema.sql, loads chunks into Postgres
+
+# 5. Run the API (terminal 1)
+uv run uvicorn api.main:app --reload --port 8000
+
+# 6. Run the frontend (terminal 2)
+cd frontend && pnpm install && pnpm dev   # → http://localhost:5173
 ```
 
 ---
