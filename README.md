@@ -13,6 +13,10 @@ treated as core features, not afterthoughts.
 > ⚠️ **This project provides general legal information, not legal advice.** It is
 > a personal learning project, not a substitute for a licensed attorney.
 
+**🔗 Live demo: [ca-tenant-law-rag-bay.vercel.app](https://ca-tenant-law-rag-bay.vercel.app/)**
+> Hosted on free tiers (Render + Neon), so the first question after a period of
+> inactivity can take 30-60s while both wake back up — after that, it's fast.
+
 ![Home page](docs/screenshots/home.png)
 
 ---
