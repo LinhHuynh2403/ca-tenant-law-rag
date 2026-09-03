@@ -13,6 +13,8 @@ optimize.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,11 +23,16 @@ from generation.generate import find_backing_source, generate_answer
 
 app = FastAPI(title="CA Tenant Law RAG API")
 
+# Vite's dev server, always allowed locally, plus whatever the deployed
+# frontend's origin is (set ALLOWED_ORIGIN in the backend host's env vars --
+# e.g. https://ca-tenant-law-rag.vercel.app, no trailing slash).
+_allowed_origins = ["http://localhost:5173"]
+if extra_origin := os.environ.get("ALLOWED_ORIGIN"):
+    _allowed_origins.append(extra_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    # Vite's default dev server port. Tighten this before deploying anywhere
-    # other than localhost.
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_allowed_origins,
     allow_methods=["POST"],
     allow_headers=["*"],
 )

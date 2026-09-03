@@ -1,4 +1,7 @@
-const API_BASE = "http://localhost:8000";
+// In production, Vercel injects VITE_API_URL (set in the project's env
+// vars) so the built frontend points at the deployed backend instead of
+// localhost.
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export interface CitationInfo {
   citation: string;
